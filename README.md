@@ -7,6 +7,7 @@
   <img src="https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white" alt="Python 3.8+">
   <img src="https://img.shields.io/badge/Espanso-2.x-6E56CF" alt="Espanso 2.x">
   <img src="https://img.shields.io/badge/dependencies-none-2ea44f" alt="No dependencies">
+  <img src="https://img.shields.io/badge/UI-English%20%7C%20العربية-orange" alt="English | Arabic">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT">
 </p>
 
@@ -17,9 +18,10 @@
 One box for the shortcut, one box for the full text, press **Add**, and it works right away in every app.
 No more broken config because of a missing space or quote.
 
-<p align="center"><img src="assets/screenshot.png" alt="Screenshot" width="640"></p>
-
-> The interface is in Arabic (right-to-left). It works with any text, in any language.
+<p align="center">
+  <img src="assets/screenshot-en.png" alt="English interface" width="49%">
+  <img src="assets/screenshot.png" alt="Arabic interface" width="49%">
+</p>
 
 ## Why
 
@@ -35,6 +37,7 @@ indent or quote can stop the whole file from loading. EspansoUI writes that file
 - **Automatic backup** before every save (last 50 kept in `%LOCALAPPDATA%\EspansoUI\backups`).
 - **Warnings** for duplicate shortcuts and for very short ones (like `am`) that may fire inside normal words.
 - **Instant effect:** Espanso reloads the file by itself. No restart.
+- **English and Arabic interface:** switch with one click (Arabic is fully right-to-left).
 - **Single window:** opening it again brings the existing window to the front.
 - **No dependencies:** only Python's standard library. The window is Microsoft Edge in app mode.
 
@@ -74,6 +77,7 @@ with a strict parser. When the window closes, the program exits.
 - **لا يخرّب ملفك:** إن وجد في الملف صيغة لا يفهمها يفتح للقراءة فقط ولا يغيّر شيئًا.
 - **نسخة احتياطية تلقائية** قبل كل حفظ، ويُحتفظ بآخر 50 نسخة.
 - **تنبيهات** للاختصار المكرر، وللاختصار القصير الذي قد ينطلق وسط الكلمات.
+- **واجهة عربية وإنجليزية** بزر واحد للتبديل.
 - **نافذة واحدة فقط**، و**بلا أي حزم إضافية**: يكفي Python.
 
 **التشغيل:** نزّل الملفات، ثم انقر مرتين على `app.pyw`.

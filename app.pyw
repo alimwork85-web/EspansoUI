@@ -40,6 +40,9 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, code, obj):
         self._send(code, json.dumps(obj, ensure_ascii=False))
 
+    def _lang(self):
+        return "en" if self.headers.get("X-Lang") == "en" else "ar"
+
     def _allowed(self):
         host = self.headers.get("Host", "")
         return host.startswith("127.0.0.1:") and self.headers.get("X-Token") == TOKEN
@@ -55,7 +58,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(200, {"ok": True, "matches": espanso_file.load(),
                                  "file": espanso_file.MATCH_FILE})
             except espanso_file.UnsupportedFile as e:
-                self._json(200, {"ok": False, "readonly": True, "error": str(e),
+                self._json(200, {"ok": False, "readonly": True, "error": e.text(self._lang()),
                                  "file": espanso_file.MATCH_FILE})
         elif self.path == "/api/ping" and self._allowed():
             last_ping = time.time()
@@ -71,10 +74,11 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length).decode("utf-8"))
             saved = espanso_file.save(data["matches"])
             self._json(200, {"ok": True, "matches": saved})
-        except (ValueError, espanso_file.UnsupportedFile) as e:
-            self._json(200, {"ok": False, "error": str(e)})
+        except espanso_file.AppError as e:
+            self._json(200, {"ok": False, "error": e.text(self._lang())})
         except Exception as e:  # أي خطأ آخر يُعرض للمستخدم ولا يوقف البرنامج
-            self._json(200, {"ok": False, "error": f"خطأ غير متوقع: {e}"})
+            prefix = "Unexpected error" if self._lang() == "en" else "خطأ غير متوقع"
+            self._json(200, {"ok": False, "error": f"{prefix}: {e}"})
 
 
 def find_edge():
@@ -87,7 +91,8 @@ def find_edge():
     return None
 
 
-WINDOW_TITLE = "اختصاراتي"
+# عنوان النافذة بالعربية أو الإنجليزية حسب لغة الواجهة
+WINDOW_TITLES = ("اختصاراتي", "My Shortcuts")
 
 
 def find_window():
@@ -101,7 +106,7 @@ def find_window():
             buf = ctypes.create_unicode_buffer(256)
             user32.GetWindowTextW(hwnd, buf, 256)
             # Windows قد يضيف علامات اتجاه حول العنوان العربي
-            if buf.value.strip("‪‫‬‎‏") == WINDOW_TITLE:
+            if buf.value.strip("\u202a\u202b\u202c\u200e\u200f") in WINDOW_TITLES:
                 found.append(hwnd)
                 return False
         return True

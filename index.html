@@ -24,7 +24,9 @@
     font: 15px/1.6 "Segoe UI", Tahoma, sans-serif;
   }
   main { max-width: 760px; margin: 0 auto; padding: 20px 16px 40px; }
-  h1 { font-size: 20px; margin: 0 0 14px; }
+  .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  h1 { font-size: 20px; margin: 0; }
+  button.lang { padding: 4px 12px; font-size: 13px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
   .form { display: grid; grid-template-columns: 200px 1fr; gap: 12px; }
   label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
@@ -68,30 +70,33 @@
 </head>
 <body>
 <main>
-  <h1>اختصاراتي</h1>
+  <div class="top">
+    <h1 data-t="title">اختصاراتي</h1>
+    <button id="lang" class="lang" type="button">English</button>
+  </div>
   <div id="msg" class="msg" hidden></div>
 
   <div class="card">
     <div class="form">
       <div>
-        <label for="trigger">الاختصار</label>
+        <label for="trigger" data-t="trigger">الاختصار</label>
         <input id="trigger" dir="auto" autocomplete="off" spellcheck="false" placeholder=";sig">
       </div>
       <div>
-        <label for="replace">الجملة كاملة</label>
-        <textarea id="replace" dir="auto" placeholder="مثال: مع خالص التحية"></textarea>
+        <label for="replace" data-t="replace">الجملة كاملة</label>
+        <textarea id="replace" dir="auto"></textarea>
       </div>
     </div>
     <div id="warn" class="warn" hidden></div>
     <div class="actions">
       <button id="save" class="primary">إضافة</button>
-      <button id="cancel" hidden>إلغاء التعديل</button>
-      <span class="hint">Ctrl + Enter للحفظ السريع</span>
+      <button id="cancel" data-t="cancel" hidden>إلغاء التعديل</button>
+      <span class="hint" data-t="hint">Ctrl + Enter للحفظ السريع</span>
     </div>
   </div>
 
   <div class="list-head">
-    <h2 id="count">الاختصارات</h2>
+    <h2 id="count"></h2>
   </div>
   <div class="card" style="padding:0" id="list"></div>
   <div class="file" id="file"></div>
@@ -103,9 +108,90 @@ let matches = [];
 let editIndex = -1;
 let readonly = false;
 
+// ---------- اللغة ----------
+const STRINGS = {
+  ar: {
+    title: "اختصاراتي",
+    trigger: "الاختصار",
+    replace: "الجملة كاملة",
+    replacePh: "مثال: مع خالص التحية",
+    add: "إضافة",
+    saveEdit: "حفظ التعديل",
+    cancel: "إلغاء التعديل",
+    hint: "Ctrl + Enter للحفظ السريع",
+    edit: "تعديل",
+    del: "حذف",
+    empty: "أضف أول اختصار من الأعلى",
+    otherLang: "English",
+    count: n => n === 0 ? "لا توجد اختصارات" : n === 1 ? "اختصار واحد" : n === 2 ? "اختصاران"
+      : n <= 10 ? String(n) + " اختصارات" : String(n) + " اختصارًا",
+    warnDup: "هذا الاختصار موجود من قبل.",
+    warnSpace: "انتبه: في الاختصار مسافة في البداية أو النهاية.",
+    warnShort: t => "اختصار قصير من حروف فقط قد ينطلق وأنت تكتب كلمات عادية. يُفضَّل أن يبدأ برمز مثل ; أو : (مثال: ;" + t + ")",
+    needTrigger: "اكتب الاختصار أولًا",
+    needReplace: "اكتب الجملة الكاملة",
+    exists: t => "الاختصار «" + t + "» موجود من قبل",
+    saved: "تم حفظ التعديل",
+    added: t => "تمت إضافة «" + t + "»، جرّبه الآن في أي برنامج",
+    confirmDel: t => "حذف الاختصار «" + t + "»؟",
+    deleted: "تم الحذف",
+    readonly: e => "لن أعدّل الملف لأنه يحتوي على صيغة لا تدعمها الواجهة، حتى لا يتلف. التفاصيل: " + e,
+  },
+  en: {
+    title: "My Shortcuts",
+    trigger: "Shortcut",
+    replace: "Full text",
+    replacePh: "e.g. Best regards",
+    add: "Add",
+    saveEdit: "Save changes",
+    cancel: "Cancel editing",
+    hint: "Ctrl + Enter to save",
+    edit: "Edit",
+    del: "Delete",
+    empty: "Add your first shortcut above",
+    otherLang: "عربي",
+    count: n => n === 0 ? "No shortcuts" : n === 1 ? "1 shortcut" : String(n) + " shortcuts",
+    warnDup: "This shortcut already exists.",
+    warnSpace: "Careful: the shortcut starts or ends with a space.",
+    warnShort: t => "A short letters-only shortcut may fire while typing normal words. Better start it with a symbol like ; or : (e.g. ;" + t + ")",
+    needTrigger: "Type the shortcut first",
+    needReplace: "Type the full text",
+    exists: t => "The shortcut “" + t + "” already exists",
+    saved: "Changes saved",
+    added: t => "Added “" + t + "”. Try it now in any app",
+    confirmDel: t => "Delete the shortcut “" + t + "”?",
+    deleted: "Deleted",
+    readonly: e => "The file won't be changed because it contains syntax the UI doesn't support, so it can't be damaged. Details: " + e,
+  },
+};
+
+function pickLang() {
+  try {
+    const saved = localStorage.getItem("lang");
+    if (saved === "ar" || saved === "en") return saved;
+  } catch (e) {}
+  return (navigator.language || "").toLowerCase().startsWith("ar") ? "ar" : "en";
+}
+let lang = pickLang();
+const T = () => STRINGS[lang];
+
+function applyLang() {
+  const s = T();
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  document.title = s.title;
+  document.querySelectorAll("[data-t]").forEach(el => (el.textContent = s[el.dataset.t]));
+  $("replace").placeholder = s.replacePh;
+  $("save").textContent = editIndex >= 0 ? s.saveEdit : s.add;
+  $("lang").textContent = s.otherLang;
+  checkWarn();
+  render();
+}
+
+// ---------- الواجهة ----------
 const $ = id => document.getElementById(id);
 const api = (path, opts = {}) =>
-  fetch(path, { ...opts, headers: { "X-Token": TOKEN, "Content-Type": "application/json" } })
+  fetch(path, { ...opts, headers: { "X-Token": TOKEN, "X-Lang": lang, "Content-Type": "application/json" } })
     .then(r => r.json());
 
 function showMsg(text, ok) {
@@ -117,49 +203,44 @@ function showMsg(text, ok) {
   if (ok) showMsg.t = setTimeout(() => (m.hidden = true), 3000);
 }
 
-function countText(n) {
-  if (n === 0) return "لا توجد اختصارات";
-  if (n === 1) return "اختصار واحد";
-  if (n === 2) return "اختصاران";
-  if (n <= 10) return String(n) + " اختصارات";
-  return String(n) + " اختصارًا";
-}
-
 function render() {
-  $("count").textContent = countText(matches.length);
+  const s = T();
+  $("count").textContent = s.count(matches.length);
   const list = $("list");
   list.innerHTML = "";
-  const rows = matches.map((m, i) => ({ m, i }));
-  if (!rows.length) {
-    list.innerHTML = '<div class="empty">أضف أول اختصار من الأعلى</div>';
+  if (!matches.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = s.empty;
+    list.append(empty);
     return;
   }
-  for (const { m, i } of rows) {
+  matches.forEach((m, i) => {
     const row = document.createElement("div");
     row.className = "item" + (i === editIndex ? " editing" : "");
     const t = document.createElement("div"); t.className = "trigger"; t.textContent = m.trigger;
     const r = document.createElement("div"); r.className = "replace"; r.textContent = m.replace;
     const b = document.createElement("div"); b.className = "btns";
-    const edit = document.createElement("button"); edit.textContent = "تعديل";
+    const edit = document.createElement("button"); edit.textContent = s.edit;
     edit.onclick = () => startEdit(i);
-    const del = document.createElement("button"); del.textContent = "حذف"; del.className = "danger";
+    const del = document.createElement("button"); del.textContent = s.del; del.className = "danger";
     del.onclick = () => remove(i);
     edit.disabled = del.disabled = readonly;
     b.append(edit, del);
     row.append(t, r, b);
     list.append(row);
-  }
+  });
 }
 
 function checkWarn() {
+  const s = T();
   const t = $("trigger").value;
   const w = $("warn");
   let text = "";
   const dup = matches.findIndex(m => m.trigger === t);
-  if (t && dup !== -1 && dup !== editIndex) text = "هذا الاختصار موجود من قبل.";
-  else if (t.trim() !== t && t) text = "انتبه: في الاختصار مسافة في البداية أو النهاية.";
-  else if (/^[\p{L}\p{N}]{1,2}$/u.test(t))
-    text = "اختصار قصير من حروف فقط قد ينطلق وأنت تكتب كلمات عادية. يُفضَّل أن يبدأ برمز مثل ; أو : (مثال: ;" + t + ")";
+  if (t && dup !== -1 && dup !== editIndex) text = s.warnDup;
+  else if (t.trim() !== t && t) text = s.warnSpace;
+  else if (/^[\p{L}\p{N}]{1,2}$/u.test(t)) text = s.warnShort(t);
   w.textContent = text;
   w.hidden = !text;
 }
@@ -177,21 +258,22 @@ async function persist(next, okText) {
 
 async function submit() {
   if (readonly) return;
+  const s = T();
   const trigger = $("trigger").value;
   const replace = $("replace").value;
-  if (!trigger.trim()) { showMsg("اكتب الاختصار أولًا", false); $("trigger").focus(); return; }
-  if (!replace) { showMsg("اكتب الجملة الكاملة", false); $("replace").focus(); return; }
+  if (!trigger.trim()) { showMsg(s.needTrigger, false); $("trigger").focus(); return; }
+  if (!replace) { showMsg(s.needReplace, false); $("replace").focus(); return; }
   const dup = matches.findIndex(m => m.trigger === trigger);
-  if (dup !== -1 && dup !== editIndex) { showMsg("الاختصار «" + trigger + "» موجود من قبل", false); return; }
+  if (dup !== -1 && dup !== editIndex) { showMsg(s.exists(trigger), false); return; }
 
   const next = matches.map(m => ({ ...m }));
   let okText;
   if (editIndex >= 0) {
     next[editIndex] = { ...next[editIndex], trigger, replace };
-    okText = "تم حفظ التعديل";
+    okText = s.saved;
   } else {
     next.push({ trigger, replace });
-    okText = "تمت إضافة «" + trigger + "»، جرّبه الآن في أي برنامج";
+    okText = s.added(trigger);
   }
   $("save").disabled = true;
   const ok = await persist(next, okText);
@@ -204,7 +286,7 @@ function startEdit(i) {
   editIndex = i;
   $("trigger").value = matches[i].trigger;
   $("replace").value = matches[i].replace;
-  $("save").textContent = "حفظ التعديل";
+  $("save").textContent = T().saveEdit;
   $("cancel").hidden = false;
   checkWarn();
   render();
@@ -216,16 +298,17 @@ function resetForm() {
   editIndex = -1;
   $("trigger").value = "";
   $("replace").value = "";
-  $("save").textContent = "إضافة";
+  $("save").textContent = T().add;
   $("cancel").hidden = true;
   checkWarn();
   $("trigger").focus();
 }
 
 async function remove(i) {
-  if (!confirm("حذف الاختصار «" + matches[i].trigger + "»؟")) return;
+  const s = T();
+  if (!confirm(s.confirmDel(matches[i].trigger))) return;
   const next = matches.filter((_, j) => j !== i);
-  if (await persist(next, "تم الحذف")) {
+  if (await persist(next, s.deleted)) {
     if (editIndex === i) resetForm();
     else if (editIndex > i) editIndex--;
   }
@@ -240,11 +323,18 @@ async function load() {
   } else {
     readonly = true;
     $("save").disabled = true;
-    showMsg("لن أعدّل الملف لأنه يحتوي على صيغة لا تدعمها الواجهة، حتى لا يتلف. التفاصيل: " + res.error, false);
+    showMsg(T().readonly(res.error), false);
   }
   render();
 }
 
+$("lang").onclick = () => {
+  lang = lang === "ar" ? "en" : "ar";
+  try { localStorage.setItem("lang", lang); } catch (e) {}
+  $("msg").hidden = true;
+  applyLang();
+  if (readonly) load();  // رسالة الخطأ تأتي من البرنامج فنطلبها باللغة الجديدة
+};
 $("save").onclick = submit;
 $("cancel").onclick = () => { resetForm(); render(); };
 $("trigger").oninput = checkWarn;
@@ -256,6 +346,7 @@ $("trigger").addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); $("replace").focus(); }
 });
 
+applyLang();
 setInterval(() => api("/api/ping").catch(() => {}), 2000);
 load().then(() => $("trigger").focus());
 </script>
