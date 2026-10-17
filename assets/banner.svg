@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14171c"/>
+      <stop offset="1" stop-color="#1e2a44"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="300" rx="20" fill="url(#bg)"/>
+  <!-- key caps: ;sig  ->  full sentence -->
+  <g font-family="Consolas, 'Courier New', monospace" font-weight="700">
+    <rect x="60" y="110" width="130" height="80" rx="14" fill="#232a36" stroke="#4f8cff" stroke-width="3"/>
+    <text x="125" y="162" font-size="34" fill="#e7eaf0" text-anchor="middle">;sig</text>
+  </g>
+  <path d="M210 150 h50 m-18 -16 l18 16 l-18 16" stroke="#4f8cff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="280" y="110" width="240" height="80" rx="14" fill="#232a36" stroke="#2e3540" stroke-width="2"/>
+  <text x="400" y="160" font-family="'Segoe UI', Tahoma, sans-serif" font-size="26" fill="#e7eaf0" text-anchor="middle">Best regards, …</text>
+  <g font-family="'Segoe UI', Tahoma, sans-serif">
+    <text x="1130" y="128" font-size="64" font-weight="700" fill="#ffffff" text-anchor="end">EspansoUI</text>
+    <text x="1130" y="178" font-size="24" fill="#9aa3b2" text-anchor="end">A simple window to add Espanso shortcuts</text>
+    <text x="1130" y="222" font-size="24" fill="#9aa3b2" text-anchor="end">واجهة بسيطة لإضافة اختصارات Espanso</text>
+  </g>
+</svg>

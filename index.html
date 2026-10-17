@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>اختصاراتي</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --text: #1d2330; --muted: #6b7280;
+    --line: #e3e6eb; --accent: #2563eb; --accent-text: #ffffff;
+    --danger: #dc2626; --warn-bg: #fff7e6; --warn: #9a5b00;
+    --ok-bg: #e8f7ee; --ok: #16794a; --err-bg: #fdecec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171c; --card: #1e232b; --text: #e7eaf0; --muted: #9aa3b2;
+      --line: #2e3540; --accent: #4f8cff; --danger: #f26b6b;
+      --warn-bg: #3a2e14; --warn: #f5c46b; --ok-bg: #163324; --ok: #6fdc9f; --err-bg: #3a1c1c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.6 "Segoe UI", Tahoma, sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 20px; margin: 0 0 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .form { display: grid; grid-template-columns: 200px 1fr; gap: 12px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  input, textarea {
+    width: 100%; font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
+  }
+  textarea { min-height: 44px; height: 44px; resize: vertical; }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .actions { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  button {
+    font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 8px; padding: 7px 16px; cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button.danger { color: var(--danger); }
+  button:disabled { opacity: .5; cursor: default; }
+  .hint { font-size: 13px; color: var(--muted); }
+  .warn { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 6px 10px; font-size: 13px; margin-top: 10px; }
+  .msg { border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 14px; }
+  .msg.ok { background: var(--ok-bg); color: var(--ok); }
+  .msg.err { background: var(--err-bg); color: var(--danger); }
+  .list-head { display: flex; justify-content: space-between; align-items: center; margin: 22px 0 8px; gap: 10px; }
+  .list-head h2 { font-size: 16px; margin: 0; }
+  .item { display: grid; grid-template-columns: 160px 1fr auto; gap: 12px; align-items: center;
+          padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .item:last-child { border-bottom: 0; }
+  .item.editing { background: var(--bg); }
+  .trigger { font-family: Consolas, "Courier New", monospace; font-weight: 600; unicode-bidi: plaintext; word-break: break-all; }
+  .replace { white-space: pre-wrap; word-break: break-word; unicode-bidi: plaintext; text-align: start; }
+  .item .btns { display: flex; gap: 6px; }
+  .item .btns button { padding: 4px 10px; font-size: 13px; }
+  .empty { padding: 24px; text-align: center; color: var(--muted); }
+  .file { font-size: 12px; color: var(--muted); margin-top: 18px; direction: ltr; text-align: left; word-break: break-all; }
+  [hidden] { display: none !important; }
+  @media (max-width: 600px) {
+    .form { grid-template-columns: 1fr; }
+    .item { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>اختصاراتي</h1>
+  <div id="msg" class="msg" hidden></div>
+
+  <div class="card">
+    <div class="form">
+      <div>
+        <label for="trigger">الاختصار</label>
+        <input id="trigger" dir="auto" autocomplete="off" spellcheck="false" placeholder=";sig">
+      </div>
+      <div>
+        <label for="replace">الجملة كاملة</label>
+        <textarea id="replace" dir="auto" placeholder="مثال: مع خالص التحية"></textarea>
+      </div>
+    </div>
+    <div id="warn" class="warn" hidden></div>
+    <div class="actions">
+      <button id="save" class="primary">إضافة</button>
+      <button id="cancel" hidden>إلغاء التعديل</button>
+      <span class="hint">Ctrl + Enter للحفظ السريع</span>
+    </div>
+  </div>
+
+  <div class="list-head">
+    <h2 id="count">الاختصارات</h2>
+  </div>
+  <div class="card" style="padding:0" id="list"></div>
+  <div class="file" id="file"></div>
+</main>
+
+<script>
+const TOKEN = "__TOKEN__";
+let matches = [];
+let editIndex = -1;
+let readonly = false;
+
+const $ = id => document.getElementById(id);
+const api = (path, opts = {}) =>
+  fetch(path, { ...opts, headers: { "X-Token": TOKEN, "Content-Type": "application/json" } })
+    .then(r => r.json());
+
+function showMsg(text, ok) {
+  const m = $("msg");
+  m.textContent = text;
+  m.className = "msg " + (ok ? "ok" : "err");
+  m.hidden = false;
+  clearTimeout(showMsg.t);
+  if (ok) showMsg.t = setTimeout(() => (m.hidden = true), 3000);
+}
+
+function countText(n) {
+  if (n === 0) return "لا توجد اختصارات";
+  if (n === 1) return "اختصار واحد";
+  if (n === 2) return "اختصاران";
+  if (n <= 10) return String(n) + " اختصارات";
+  return String(n) + " اختصارًا";
+}
+
+function render() {
+  $("count").textContent = countText(matches.length);
+  const list = $("list");
+  list.innerHTML = "";
+  const rows = matches.map((m, i) => ({ m, i }));
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">أضف أول اختصار من الأعلى</div>';
+    return;
+  }
+  for (const { m, i } of rows) {
+    const row = document.createElement("div");
+    row.className = "item" + (i === editIndex ? " editing" : "");
+    const t = document.createElement("div"); t.className = "trigger"; t.textContent = m.trigger;
+    const r = document.createElement("div"); r.className = "replace"; r.textContent = m.replace;
+    const b = document.createElement("div"); b.className = "btns";
+    const edit = document.createElement("button"); edit.textContent = "تعديل";
+    edit.onclick = () => startEdit(i);
+    const del = document.createElement("button"); del.textContent = "حذف"; del.className = "danger";
+    del.onclick = () => remove(i);
+    edit.disabled = del.disabled = readonly;
+    b.append(edit, del);
+    row.append(t, r, b);
+    list.append(row);
+  }
+}
+
+function checkWarn() {
+  const t = $("trigger").value;
+  const w = $("warn");
+  let text = "";
+  const dup = matches.findIndex(m => m.trigger === t);
+  if (t && dup !== -1 && dup !== editIndex) text = "هذا الاختصار موجود من قبل.";
+  else if (t.trim() !== t && t) text = "انتبه: في الاختصار مسافة في البداية أو النهاية.";
+  else if (/^[\p{L}\p{N}]{1,2}$/u.test(t))
+    text = "اختصار قصير من حروف فقط قد ينطلق وأنت تكتب كلمات عادية. يُفضَّل أن يبدأ برمز مثل ; أو : (مثال: ;" + t + ")";
+  w.textContent = text;
+  w.hidden = !text;
+}
+
+async function persist(next, okText) {
+  const res = await api("/api/save", { method: "POST", body: JSON.stringify({ matches: next }) });
+  if (res.ok) {
+    matches = res.matches;
+    showMsg(okText, true);
+    return true;
+  }
+  showMsg(res.error, false);
+  return false;
+}
+
+async function submit() {
+  if (readonly) return;
+  const trigger = $("trigger").value;
+  const replace = $("replace").value;
+  if (!trigger.trim()) { showMsg("اكتب الاختصار أولًا", false); $("trigger").focus(); return; }
+  if (!replace) { showMsg("اكتب الجملة الكاملة", false); $("replace").focus(); return; }
+  const dup = matches.findIndex(m => m.trigger === trigger);
+  if (dup !== -1 && dup !== editIndex) { showMsg("الاختصار «" + trigger + "» موجود من قبل", false); return; }
+
+  const next = matches.map(m => ({ ...m }));
+  let okText;
+  if (editIndex >= 0) {
+    next[editIndex] = { ...next[editIndex], trigger, replace };
+    okText = "تم حفظ التعديل";
+  } else {
+    next.push({ trigger, replace });
+    okText = "تمت إضافة «" + trigger + "»، جرّبه الآن في أي برنامج";
+  }
+  $("save").disabled = true;
+  const ok = await persist(next, okText);
+  $("save").disabled = false;
+  if (ok) resetForm();
+  render();
+}
+
+function startEdit(i) {
+  editIndex = i;
+  $("trigger").value = matches[i].trigger;
+  $("replace").value = matches[i].replace;
+  $("save").textContent = "حفظ التعديل";
+  $("cancel").hidden = false;
+  checkWarn();
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  $("replace").focus();
+}
+
+function resetForm() {
+  editIndex = -1;
+  $("trigger").value = "";
+  $("replace").value = "";
+  $("save").textContent = "إضافة";
+  $("cancel").hidden = true;
+  checkWarn();
+  $("trigger").focus();
+}
+
+async function remove(i) {
+  if (!confirm("حذف الاختصار «" + matches[i].trigger + "»؟")) return;
+  const next = matches.filter((_, j) => j !== i);
+  if (await persist(next, "تم الحذف")) {
+    if (editIndex === i) resetForm();
+    else if (editIndex > i) editIndex--;
+  }
+  render();
+}
+
+async function load() {
+  const res = await api("/api/matches");
+  $("file").textContent = res.file;
+  if (res.ok) {
+    matches = res.matches;
+  } else {
+    readonly = true;
+    $("save").disabled = true;
+    showMsg("لن أعدّل الملف لأنه يحتوي على صيغة لا تدعمها الواجهة، حتى لا يتلف. التفاصيل: " + res.error, false);
+  }
+  render();
+}
+
+$("save").onclick = submit;
+$("cancel").onclick = () => { resetForm(); render(); };
+$("trigger").oninput = checkWarn;
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); submit(); }
+  if (e.key === "Escape" && editIndex >= 0) { resetForm(); render(); }
+});
+$("trigger").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); $("replace").focus(); }
+});
+
+setInterval(() => api("/api/ping").catch(() => {}), 2000);
+load().then(() => $("trigger").focus());
+</script>
+</body>
+</html>
